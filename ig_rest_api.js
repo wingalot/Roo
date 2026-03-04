@@ -65,27 +65,29 @@ async function createLimitOrder(authData, epic, direction, size, limitPrice) {
     }
 }
 
-async function closePositionAPI(authData, dealId, epic, direction, size) {
+async function closePositionAPI(authData, dealId, epic, originalDirection, originalSize) {
     console.log(`🛑 Slēdzu reālo pozīciju IG platformā (Deal ID: ${dealId})...`);
-    // Lai aizvērtu, virziens jāpagriež otrādi
-    const closeDirection = direction === "BUY" ? "SELL" : "BUY";
+    // Lai aizvērtu, virziens jāpagriež otrādi un jābūt precīzam size
+    const closeDirection = originalDirection === "BUY" ? "SELL" : "BUY";
+    // Automātiska pārliecināšanās, ka mēs pasniedzam pareizo formātu decimāldaļās (piem. 0.1) String vai float
+    const exactSize = typeof originalSize === "string" ? parseFloat(originalSize) : originalSize;
     try {
         const response = await axios.post(`${process.env.IG_API_URL}/positions/otc`, {
             dealId: dealId,
             direction: closeDirection,
-            size: size,
+            size: exactSize,
             orderType: "MARKET"
         }, {
             headers: { 
                 'X-IG-API-KEY': process.env.IG_API_KEY, 
                 'CST': authData.cst, 
                 'X-SECURITY-TOKEN': authData.secToken, 
-                '_method': 'DELETE', // Fallback
+                '_method': 'DELETE',
                 'Version': '1',
                 'Content-Type': 'application/json'
             }
         });
-        console.log(`✅ Pozīcija sekmīgi aizvērta IG platformā!`);
+        console.log(`✅ Pozīcija sekmīgi aizvērta IG platformā! (DealRef: ${response.data.dealReference})`);
         return true;
     } catch (err) {
         console.error("❌ Kļūda aizverot orderi:", err.response ? JSON.stringify(err.response.data) : err.message);

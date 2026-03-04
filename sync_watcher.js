@@ -2,6 +2,13 @@ require('dotenv').config();
 const axios = require('axios');
 const fs = require('fs');
 
+let ignoredIgPositions = new Set();
+// Saglabāsim paziņotos ID starp restartiem
+const ignoredFile = 'ignored_deals.json';
+if (fs.existsSync(ignoredFile)) {
+    ignoredIgPositions = new Set(JSON.parse(fs.readFileSync(ignoredFile)));
+}
+
 function logMsg(msg) {
     console.log(`[SYNC ${new Date().toISOString()}] ${msg}`);
 }
@@ -30,158 +37,84 @@ async function syncLoop() {
             pendingOrders = JSON.parse(fs.readFileSync('pending_orders.json'));
         }
         
-        const posRes = await axios.get(`${process.env.IG_API_URL}/positions`, { headers: h1 });
-        const igPositions = posRes.data.positions.map(p => ({
-            dealId: p.position.dealId,
-            epic: p.market.epic,
-            direction: p.position.direction,
-            dealSize: p.position.dealSize,
-            currency: p.position.currency
-        }));
+        const axiosConfig = {
+            headers: h1
+        };
+
+        const posRes = await axios.get(`${process.env.IG_API_URL}/positions`, axiosConfig);
+        const igPositions = posRes.data.positions || [];
         
+        const activeTradesPath = 'active_trades.json';
         let activeTrades = {};
-        if (fs.existsSync('active_trades.json')) {
-            activeTrades = JSON.parse(fs.readFileSync('active_trades.json'));
+        if (fs.existsSync(activeTradesPath)) {
+            const fileData = fs.readFileSync(activeTradesPath, 'utf8');
+            if (fileData.trim() !== '') {
+                // Support both array and object formats for active_trades.json
+                const parsed = JSON.parse(fileData);
+                if (Array.isArray(parsed)) {
+                    parsed.forEach(t => activeTrades[t.epic || t.dealId] = t);
+                } else {
+                    activeTrades = parsed;
+                }
+            }
         }
         
         const localDealIds = new Set(Object.values(activeTrades).map(t => t.dealId));
-        const igDealIds = new Set(igPositions.map(p => p.dealId));
+        const igDealIds = new Set(igPositions.map(p => p.position.dealId));
         let modificationsMade = false;
 
-        // --- 3. PĀRBAUDAM TELEGRAM UPDATE (Move StopLoss) ---
-        if (fs.existsSync('latest_signals.json')) {
-            const signals = JSON.parse(fs.readFileSync('latest_signals.json', 'utf8'));
-            let localTradesModified = false;
-            
-            for (const msg of signals) {
-                if (!msg.text || !msg.reply_to) continue;
-                
-                const txt = msg.text.toLowerCase().replace(/sl:/g, "stoploss").replace(/ /g, "");
-
-                // Mēģinām atrast Breakeven (BE) komandas
-                if (txt.includes('stoplosstobreakeven') || txt.includes('sltobreakeven') || txt.includes('move sl to be') || msg.text.toLowerCase().includes('move stoploss to breakeven')) {
-                    for (const [epic, trade] of Object.entries(activeTrades)) {
-                        if (trade.telegramMsgId === msg.reply_to || !trade.telegramMsgId) {
-                            if(trade.sl !== trade.entryPrice) {
-                                logMsg(`📲 TELEGRAM UPDATE saņemts: Pārcelts SL uz BREAKEVEN (${trade.entryPrice}) instrumentam ${epic}`);
-                                trade.sl = trade.entryPrice;
-                                trade.telegramMsgId = msg.reply_to; // piesiets
-                                localTradesModified = true;
-                                modificationsMade = true;
-                                
-                                try {
-                                    const { execSync } = require('child_process');
-                                    // Paziņojums izdzēsts un apklusināts
-                                } catch(e) {}
-                            }
-                        }
-                    }
-                }
-
-                const match = txt.match(/movestoploss[a-z]*([0-9.]+)/i) || 
-                              txt.match(/moveslto([0-9.]+)/i) || 
-                              msg.text.toLowerCase().match(/move stoploss to ([0-9.]+)/) || 
-                              msg.text.toLowerCase().match(/move sl to ([0-9.]+)/);
-
-                if (match && match[1]) {
-                    const parsedSl = parseFloat(match[1]);
-
-                    // Pārbaudam Active Trades
-                    for (const [epic, trade] of Object.entries(activeTrades)) {
-                        if (trade.telegramMsgId === msg.reply_to && trade.sl !== parsedSl) {
-                            logMsg(`📲 TELEGRAM UPDATE saņemts: Pārcelts SL uz ${parsedSl} instrumentam ${epic}`);
-                            trade.sl = parsedSl;
-                            localTradesModified = true;
-                            modificationsMade = true;
-                            
-                            try {
-                                const { execSync } = require('child_process');
-                                // Paziņojums izdzēsts un apklusināts
-                            } catch(e) {}
-                        }
-                    }
-                    
-                    // Pārbaudam arī Pending Orders (ja SL mainīts pirms limit orderis atvērts)
-                    for (const [pKey, pData] of Object.entries(pendingOrders)) {
-                        if (pData.telegramMsgId === msg.reply_to && pData.sl !== parsedSl) {
-                            logMsg(`📲 TELEGRAM UPDATE saņemts (Limit): Pārcelts SL uz ${parsedSl} instrumentam ${pData.epic}`);
-                            pData.sl = parsedSl;
-                            fs.writeFileSync('pending_orders.json', JSON.stringify(pendingOrders, null, 2));
-                            
-                            try {
-                                const { execSync } = require('child_process');
-                                // Paziņojums izdzēsts un apklusināts
-                            } catch(e) {}
-                        }
-                    }
-                }
-            }
-            if (localTradesModified) {
-                fs.writeFileSync('active_trades.json', JSON.stringify(activeTrades, null, 2));
-            }
-        }
-        // --- BEIGAS TELEGRAM UPDATE ---
-
-        
-        for (const igPos of igPositions) {
+        // Pārbaudam vai ir IG pozīcijas, kuru nav lokāli
+        for (const p of igPositions) {
+            const igPos = {
+                dealId: p.position.dealId,
+                epic: p.market.epic,
+                direction: p.position.direction,
+                dealSize: p.position.dealSize,
+                currency: p.position.currency
+            };
             if (!localDealIds.has(igPos.dealId)) {
-                let matchedPendingKey = null;
-                for (const [pKey, pData] of Object.entries(pendingOrders)) {
-                    // Vienkārsojam: ja sakrīt epic (instruments)
-                    if (pData.epic === igPos.epic) {
-                        matchedPendingKey = pKey;
-                        break;
-                    }
-                }
                 
-                if (matchedPendingKey) {
-                    const pData = pendingOrders[matchedPendingKey];
-                    logMsg(`🎯 ATPAZĪTS: Limit orderis izpildījies! Jaunais Deal ID: ${igPos.dealId} (${igPos.epic})`);
-                    
-                    activeTrades[igPos.epic] = {
-                        dealId: igPos.dealId,
-                        epic: igPos.epic,
-                        direction: igPos.direction,
-                        size: igPos.dealSize,
-                        entryPrice: pData.entryPrice || 0,
-                        tp1: pData.tp1,
-                        tp2: pData.tp2,
-                        sl: pData.sl,
-                        phase: 1,
-                        highestPnl: 0
-                    };
-                    
-                    delete pendingOrders[matchedPendingKey];
-                    fs.writeFileSync('pending_orders.json', JSON.stringify(pendingOrders, null, 2));
-                    localDealIds.add(igPos.dealId);
-                    modificationsMade = true;
+                // Brīdinām tikai vienreiz par šo pozīciju starp sistēmas sesijām
+                if (!ignoredIgPositions.has(igPos.dealId)) {
+                    logMsg(`🚨 KONFLIKTS: IG atrasta pozīcija, kuras nav lokālajā uzraudzībā! DealId: ${igPos.dealId} (${igPos.epic}). Sūtu paziņojumu lietotājam...`);
                     
                     try {
+                        const tgMsg = `⚠️ Brīdinājums: Nesakritība sistēmās!\n\nIG platformā eksistē aktīva pozīcija (Instruments: ${igPos.epic}, Virziens: ${igPos.direction}, DealID: ${igPos.dealId}), kuras nav mūsu lokālajā datubāzē.\n\nKo man darīt ar šo pozīciju?\nVariācijas: Aizvērt to vai Ignorēt to (nepieskarties).`;
                         const { execSync } = require('child_process');
-                        console.log(`✅ Pievienoju... Paziņoju sistēmai (Telegram notifications disabled)`);
-                        // Paziņojums izdzēsts un apklusināts
-                    } catch(e) {}
-                    continue;
+                        execSync(`openclaw message send --target "telegram:395239117" --message "${tgMsg}"`);
+                        
+                        // Pievienojam ignora sarakstam
+                        ignoredIgPositions.add(igPos.dealId);
+                        fs.writeFileSync(ignoredFile, JSON.stringify([...ignoredIgPositions]));
+                    } catch(tgErr) {
+                        logMsg(`Neizdevās nosūtīt OpenClaw paziņojumu: ${tgErr.message}`);
+                    }
                 }
-                
-                logMsg(`🚨 KONFLIKTS: IG atrasta pozīcija, kuras nav lokālajā uzraudzībā! DealId: ${igPos.dealId} (${igPos.epic}). Prasu atļauju...`);
-                try {
-                    const { execSync } = require('child_process');
-                    // Paziņojums izdzēsts un apklusināts
-                } catch(tgErr) {}
             }
         }
         
+        // Pārbaudam vai ir lokālas pozīcijas, kuru vairs nav IG (izdzēstas manuāli IG pusē vai izsistas)
         for (const [key, tradeObj] of Object.entries(activeTrades)) {
             if (!igDealIds.has(tradeObj.dealId)) {
-                logMsg(`🚨 KONFLIKTS: Lokāli ir gaidāma pozīcija ${tradeObj.dealId} (${key}), bet IG tā vairs neeksistē. Dzēšu lokālo.`);
+                logMsg(`🚨 KONFLIKTS: Lokāli ir pozīcija ${tradeObj.dealId} (${tradeObj.epic}), bet IG tā vairs neeksistē. Sūtu paziņojumu izdzēšanai...`);
+                
+                try {
+                    const tgMsg = `ℹ️ Info: Sinhronizācija.\n\nPozīcija ${tradeObj.epic} (DealID: ${tradeObj.dealId}) vairs neeksistē IG kontā. Dzēšu to no lokālās atmiņas.`;
+                    const { execSync } = require('child_process');
+                    execSync(`openclaw message send --target "telegram:395239117" --message "${tgMsg}"`);
+                } catch(tgErr) {
+                    logMsg(`Neizdevās nosūtīt OpenClaw paziņojumu: ${tgErr.message}`);
+                }
+                
                 delete activeTrades[key];
                 modificationsMade = true;
             }
         }
         
         if (modificationsMade) {
-            fs.writeFileSync('active_trades.json', JSON.stringify(activeTrades, null, 2));
+            // Saglabājam masīva formātā, tā kā trading_engine.js parasti sagaida datus masīvā
+            const arr = Object.values(activeTrades);
+            fs.writeFileSync(activeTradesPath, JSON.stringify(arr, null, 2));
             logMsg("💾 Lokālā datubāze atjaunināta.");
         } else {
             logMsg("✅ Sistēmas Sinhronizētas.");
