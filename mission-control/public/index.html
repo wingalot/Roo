@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roo Mission Control</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="dashboard">
+        <header class="top-nav">
+            <div class="logo">
+                <h1>ROO MISSION CONTROL</h1>
+                <span class="badge">LIVE SYSTEM</span>
+            </div>
+            <div class="time-container">
+                <span id="sys-time">00:00:00 GMT+2</span>
+            </div>
+        </header>
+
+        <div class="grid-container">
+            <!-- Systems Status Module -->
+            <section class="card status-card">
+                <div class="card-header">
+                    <h2>SYSTEM CONNECTIVITY</h2>
+                    <div class="status-dot global-status"></div>
+                </div>
+                <div class="sys-list">
+                    <div class="sys-item">
+                        <span class="sys-name">IG REST API</span>
+                        <div class="sys-status">
+                            <span class="indicator" id="ind-ig"></span>
+                            <span class="sys-val" id="stat-ig">CONNECTING...</span>
+                        </div>
+                    </div>
+                    <div class="sys-item">
+                        <span class="sys-name">Lightstreamer (WSS)</span>
+                        <div class="sys-status">
+                            <span class="indicator" id="ind-wss"></span>
+                            <span class="sys-val" id="stat-wss">CONNECTING...</span>
+                        </div>
+                    </div>
+                    <div class="sys-item">
+                        <span class="sys-name">Telegram [Felix]</span>
+                        <div class="sys-status">
+                            <span class="indicator" id="ind-tg"></span>
+                            <span class="sys-val" id="stat-tg">CONNECTING...</span>
+                        </div>
+                    </div>
+                    <div class="sys-item">
+                        <span class="sys-name">Local TP/SL Daemon</span>
+                        <div class="sys-status">
+                            <span class="indicator" id="ind-pm2"></span>
+                            <span class="sys-val" id="stat-pm2">CONNECTING...</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Account Balance Module -->
+            <section class="card account-card">
+                <div class="card-header">
+                    <h2>ACCOUNT OVERVIEW</h2>
+                </div>
+                <div class="balance-layout">
+                    <div class="metric primary">
+                        <span class="label">TOTAL EQUITY (USD)</span>
+                        <span class="value" id="acc-equity">0.00</span>
+                    </div>
+                    <div class="secondary-metrics">
+                        <div class="metric">
+                            <span class="label">AVAILABLE</span>
+                            <span class="value sm" id="acc-avail">0.00</span>
+                        </div>
+                        <div class="metric">
+                            <span class="label">MARGIN USED</span>
+                            <span class="value sm" id="acc-margin">0.00</span>
+                        </div>
+                        <div class="metric" id="pnl-container">
+                            <span class="label">OPEN P&L</span>
+                            <span class="value sm" id="acc-pnl">0.00</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Telegram Signals Feed -->
+            <section class="card signals-card">
+                <div class="card-header">
+                    <h2>FELIX SIGNALS LOG</h2>
+                </div>
+                <div class="signals-list" id="signals-body">
+                    <div class="empty-state">No signals received yet.</div>
+                </div>
+            </section>
+
+            <!-- Active Positions Module -->
+            <section class="card positions-card">
+                <div class="card-header">
+                    <h2>ACTIVE TRADES</h2>
+                    <span class="count-badge"><span id="pos-count">0</span> OPEN</span>
+                </div>
+                <div class="table-wrapper">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ASSET</th>
+                                <th>DIR</th>
+                                <th>SIZE</th>
+                                <th>ENTRY</th>
+                                <th>CURRENT</th>
+                                <th>TP (10%)</th>
+                                <th>SL</th>
+                                <th class="right-align">P&L (USD)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="positions-body">
+                            <tr>
+                                <td colspan="8" class="empty-state">No active trades in system.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <script>
+        // UI Logic
+        function updateTime() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('en-US', { hour12: false });
+            document.getElementById('sys-time').textContent = `${timeString} GMT+2`;
+            requestAnimationFrame(updateTime);
+        }
+        updateTime();
+
+        // WebSocket Connection
+        function connectWS() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.hostname}:3050`;
+            const ws = new WebSocket(wsUrl);
+            
+            ws.onopen = () => {
+                document.querySelector('.global-status').style.backgroundColor = 'var(--success)';
+                
+                ['ig', 'wss', 'tg', 'pm2'].forEach(id => {
+                    document.getElementById(`stat-${id}`).textContent = 'ONLINE';
+                    document.getElementById(`ind-${id}`).className = 'indicator ok';
+                });
+            };
+            
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.type === 'update') updateDashboard(data.data);
+                } catch (e) {
+                    console.error("Parse error", e);
+                }
+            };
+            
+            ws.onclose = () => {
+                document.querySelector('.global-status').style.backgroundColor = 'var(--danger)';
+                
+                ['ig', 'wss', 'tg', 'pm2'].forEach(id => {
+                    document.getElementById(`stat-${id}`).textContent = 'OFFLINE';
+                    document.getElementById(`ind-${id}`).className = 'indicator err';
+                });
+                
+                setTimeout(connectWS, 2000);
+            };
+        }
+
+        function updateDashboard(data) {
+            if (data.balance) {
+                document.getElementById('acc-equity').textContent = data.balance.equity.toLocaleString('en-US', {minimumFractionDigits: 2});
+                document.getElementById('acc-avail').textContent = data.balance.available.toLocaleString('en-US', {minimumFractionDigits: 2});
+                document.getElementById('acc-margin').textContent = data.balance.margin.toLocaleString('en-US', {minimumFractionDigits: 2});
+                
+                const pnlEl = document.getElementById('acc-pnl');
+                const pnlVal = data.balance.pnl || 0;
+                
+                pnlEl.textContent = (pnlVal >= 0 ? '+' : '') + pnlVal.toLocaleString('en-US', {minimumFractionDigits: 2});
+                pnlEl.className = `value sm ${pnlVal > 0 ? 'profit' : pnlVal < 0 ? 'loss' : ''}`;
+            }
+            
+            // Positions Check
+            const trs = data.trades && data.trades.length > 0 ? data.trades : [];
+            const tbody = document.getElementById('positions-body');
+            document.getElementById('pos-count').textContent = trs.length;
+            
+            if (trs.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No active trades in system.</td></tr>';
+            } else {
+                tbody.innerHTML = '';
+                trs.forEach(t => {
+                    const row = document.createElement('tr');
+                    const isProfit = (t.pnl || 0) >= 0;
+                    row.innerHTML = `
+                        <td class="fw-bold">${t.epic ? t.epic.split('.')[2] || t.epic : '-'}</td>
+                        <td class="${t.direction === 'BUY' ? 'profit' : 'loss'} fw-bold">${t.direction}</td>
+                        <td>${t.size}</td>
+                        <td class="mono">${t.entryPrice ? t.entryPrice.toFixed(4) : '-'}</td>
+                        <td class="mono highlight">-</td> <!-- Will need live WSS price -->
+                        <td class="mono">${t.tp1 ? t.tp1.toFixed(4) : '-'}</td>
+                        <td class="mono">${t.sl ? t.sl.toFixed(4) : '-'}</td>
+                        <td class="mono right-align ${isProfit ? 'profit' : 'loss'} fw-bold">
+                            ${isProfit ? '+' : ''}${(t.pnl || 0).toFixed(2)}
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            }
+
+            // Signals Check
+            const sgs = data.signals && data.signals.length > 0 ? data.signals : [];
+            const sigBody = document.getElementById('signals-body');
+            if (sgs.length === 0) {
+                sigBody.innerHTML = '<div class="empty-state">No signals received yet.</div>';
+            } else {
+                sigBody.innerHTML = '';
+                sgs.forEach(s => {
+                    const dateObj = new Date(s.timestamp);
+                    const timeStr = dateObj.toLocaleTimeString('en-US', { hour12: false });
+                    const txt = s.text.length > 100 ? s.text.substring(0, 100) + '...' : s.text;
+                    const el = document.createElement('div');
+                    el.className = 'signal-item';
+                    
+                    let headerBadge = s.reply_to ? '<span class="reply-badge">REPLY</span>' : '<span class="new-signal-badge">NEW</span>';
+
+                    el.innerHTML = `
+                        <div class="sig-header">
+                            <span class="sig-time">[${timeStr}]</span>
+                            ${headerBadge}
+                        </div>
+                        <div class="sig-text">${txt}</div>
+                    `;
+                    sigBody.appendChild(el);
+                });
+            }
+        }
+
+        setTimeout(connectWS, 500);
+    </script>
+</body>
+</html>
