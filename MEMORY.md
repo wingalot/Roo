@@ -12,7 +12,7 @@
 
 ### 🐛 Kļūdu Analīze (Lessons Learned)
 *   **API Currency Code:** Demo accounts bieži izmet `validation.null-not-allowed.request.currencyCode` vai pieprasa stingru `USD/GBP` atkarībā no CFD. Tagad lokālais izpildes kods fiksēti un dinamiski veido šo request atkarībā no prasībām, izvairoties no "EUR" defaultēšanas.
-*   **REST DELETE Method (Aizvēršana):** IG V2 REST endpointi nepieņem standarta Axios HTTP Delete metodes viegli. Lai slēgtu pozīciju caur POST (`/positions/otc`), ir nepieciešams izmantot Header Override (`X-HTTP-Method-Override: DELETE` vai `_method: DELETE`).
+*   **REST DELETE Method (Aizvēršana):** IG V2 REST endpointi nepieņem standarta Axios HTTP Delete metodes viegli. Lai slēgtu pozīciju caur POST (`/positions/otc`), ir nepieciešams izmantot Header Override (`X-HTTP-Method-Override: DELETE` vai `_method: DELETE`). Papinājot: lai pilnībā un sekmīgi izdzēstu pozīciju, request bāzē NEDRĪKST saturēt liekus parametrus kā `epic` vai `orderType` (kas izsauc `validation.mutual-exclusive-value.request` kļūdu). Padevei jāsatur tikai `dealId`, pretējais `direction` un `size`.
 *   **Idempotences Dublikāti:** Manā agrīnā komandrindas testēšanā komandas retries atvēra 5 dublētas Zelta pozīcijas. Lai no tā izvairītos, izstrādāts "Kills" pārbaudes skripts un viena darījuma stingra fiksēšana lokālajā `active_trades.json`.
 *   **Asinhronie Websockets:** Tika apstiprināts tūlītējas reakcijas trūkums "Fona (background)" Node processos komandrindā. Nākotnē Lightstreamer dzinējs nedrīkst tikt restartēts caur exec; tas būs long-running process vai PM2 service.
 

@@ -82,8 +82,15 @@ async function syncLoop() {
         // SCENĀRIJS A: Pozīcija ir IG, bet nav LOKĀLI (Orphan / Uzkarināts Dublikāts)
         for (const igPos of igPositions) {
             if (!localDealIds.has(igPos.dealId)) {
-                logMsg(`🚨 KONFLIKTS: IG atrasta pozīcija, kuras nav lokālajā uzraudzībā! DealId: ${igPos.dealId} (${igPos.epic}). Slēdzu ārā!`);
-                await closeOrphanPosition(auth, igPos);
+                logMsg(`🚨 KONFLIKTS: IG atrasta pozīcija, kuras nav lokālajā uzraudzībā! DealId: ${igPos.dealId} (${igPos.epic}). Prasu lietotājam atļauju...`);
+                // Send Telegram message to ask for permission using OpenClaw native message
+                try {
+                    const { execSync } = require('child_process');
+                    execSync(`openclaw message send --target "395239117" --channel "telegram" --message "⚠️ **Uzmanību! Atrasts fiktīvs (Orphan) orderis IG kontā!**\\n\\n**Instruments:** ${igPos.epic}\\n**Deal ID:** ${igPos.dealId}\\n**Izmērs:** ${igPos.dealSize} (${igPos.direction})\\n\\nŠī pozīcija atrodas atvērta IG, bet nav mūsu sistēmas uzskaitē. Vai vēlies, lai es to **aizveru** nekavējoties?"`);
+                    logMsg(`📨 Nosūtīts pieprasījums Telegram dzēst orphan pozīciju: ${igPos.dealId}`);
+                } catch(tgErr) {
+                    logMsg(`❌ Kļūda nosūtot Telegram paziņojumu: ${tgErr.message}`);
+                }
             }
         }
         

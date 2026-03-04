@@ -1,0 +1,1 @@
+Lai aizvērtu pozīciju IG API (V2 POST ar _method DELETE), parametru json 'body' SATUR TIKAI 'dealId', 'direction' un 'size'. Nedrīkst likt iekšā 'epic' u.c. pretējā gadījumā iemet kļūdu: validation.mutual-exclusive-value.request
