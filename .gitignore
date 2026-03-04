@@ -1,0 +1,20 @@
+# Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Virtual environments
+venv/
+.env
+
+# OpenClaw specific (can choose to keep these if you want to reuse the exact memory)
+# .openclaw/ 
+# memory/ 
+# active_trades.json
+
+# Logs
+sync_log.txt
+
+# Keys / Auth (Just in case)
+*.pem
+*.key

@@ -1,0 +1,26 @@
+{
+  "CS.D.CFDGOLD.CFDGC.IP_REAL": {
+    "dealId": "DIAAAAWR6M4KCAF",
+    "dealType": "MARKET",
+    "direction": "BUY",
+    "openLevel": 5175.85,
+    "tp1": 5178.85,
+    "tp2": 5181.85,
+    "tp3": 5187.85,
+    "sl": 5170.85,
+    "status": "PHASE_1",
+    "fallbackDistance": 0.3
+  },
+  "CS.D.GBPUSD.CFD.IP_REAL": {
+    "dealId": "DIAAAAWR6MXUSAU",
+    "dealType": "MARKET",
+    "direction": "SELL",
+    "openLevel": 1.33424,
+    "tp1": 1.33224,
+    "tp2": 1.33024,
+    "tp3": 1.32624,
+    "sl": 1.33724,
+    "status": "PHASE_1",
+    "fallbackDistance": 0.0002
+  }
+}
