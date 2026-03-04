@@ -71,14 +71,14 @@ async function syncLoop() {
                                 
                                 try {
                                     const { execSync } = require('child_process');
-                                    execSync(`openclaw message send --target "395239117" --channel "telegram" --message "🛡️ **StopLoss Pārcelts uz Breakeven (Entry Price)!**\n\nInstruments: ${epic}\nJaunais SL: ${trade.entryPrice}\nPamatojums: Felix Update"`);
+                                    // Paziņojums izdzēsts un apklusināts
                                 } catch(e) {}
                             }
                         }
                     }
                 }
 
-                const match = txt.match(/movestoploss/[a-z]*([0-9.]+)/i) || 
+                const match = txt.match(/movestoploss[a-z]*([0-9.]+)/i) || 
                               txt.match(/moveslto([0-9.]+)/i) || 
                               msg.text.toLowerCase().match(/move stoploss to ([0-9.]+)/) || 
                               msg.text.toLowerCase().match(/move sl to ([0-9.]+)/);
@@ -96,7 +96,7 @@ async function syncLoop() {
                             
                             try {
                                 const { execSync } = require('child_process');
-                                execSync(`openclaw message send --target "395239117" --channel "telegram" --message "🔄 **StopLoss Automātiski Pārcelts!**\n\nInstruments: ${epic}\nJaunais SL: ${parsedSl}\nPamatojums: Saņemts atjauninājums no Felix"`);
+                                // Paziņojums izdzēsts un apklusināts
                             } catch(e) {}
                         }
                     }
@@ -110,7 +110,7 @@ async function syncLoop() {
                             
                             try {
                                 const { execSync } = require('child_process');
-                                execSync(`openclaw message send --target "395239117" --channel "telegram" --message "🔄 **Limit Orderim StopLoss Pārcelts!**\n\nInstruments: ${pData.epic}\nJaunais SL: ${parsedSl}"`);
+                                // Paziņojums izdzēsts un apklusināts
                             } catch(e) {}
                         }
                     }
@@ -158,8 +158,8 @@ async function syncLoop() {
                     
                     try {
                         const { execSync } = require('child_process');
-                        console.log(`✅ Pievienoju... Paziņoju Telegramam.`);
-                        execSync(`openclaw message send --target "395239117" --channel "telegram" --message "🎯 **Limit Orderis Aktivizēts!**\n\nInstruments: ${igPos.epic}\nTagad lokālais TP/SL dzinējs sāk to uzraudzīt. Deal ID: ${igPos.dealId}"`);
+                        console.log(`✅ Pievienoju... Paziņoju sistēmai (Telegram notifications disabled)`);
+                        // Paziņojums izdzēsts un apklusināts
                     } catch(e) {}
                     continue;
                 }
@@ -167,7 +167,7 @@ async function syncLoop() {
                 logMsg(`🚨 KONFLIKTS: IG atrasta pozīcija, kuras nav lokālajā uzraudzībā! DealId: ${igPos.dealId} (${igPos.epic}). Prasu atļauju...`);
                 try {
                     const { execSync } = require('child_process');
-                    execSync(`openclaw message send --target "395239117" --channel "telegram" --message "⚠️ **Uzmanību! Atrasts fiktīvs (Orphan) orderis IG kontā!**\n\n**Instruments:** ${igPos.epic}\n**Deal ID:** ${igPos.dealId}\n**Izmērs:** ${igPos.dealSize} (${igPos.direction})\n\nŠī pozīcija atrodas atvērta IG, bet nav mūsu sistēmas uzskaitē. Vai vēlies, lai es to **aizveru** nekavējoties?"`);
+                    // Paziņojums izdzēsts un apklusināts
                 } catch(tgErr) {}
             }
         }
