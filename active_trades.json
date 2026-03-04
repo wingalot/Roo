@@ -1,15 +1,28 @@
 {
-  "CS.D.CFDGOLD.CFDGC.IP": {
-    "dealId": "DIAAAAWSFFESZBA",
-    "epic": "CS.D.CFDGOLD.CFDGC.IP",
-    "direction": "SELL",
+  "CS.D.EURUSD.CFD.IP": {
+    "dealId": "DIAAAAWSK9A4NA7",
+    "direction": "BUY",
+    "openLevel": 11638.4,
     "size": 1,
-    "entryPrice": 5186,
-    "tp1": 5183,
-    "tp2": 5120,
+    "tp1": 11838.4,
+    "tp2": 12038.4,
+    "tp3": 12438.4,
     "sl": 5200.1,
-    "phase": 1,
-    "highestPnl": 0,
+    "status": "PHASE_1",
+    "entryTimestamp": "2026-03-04T16:36:57.231Z",
     "telegramMsgId": 8444
+  },
+  "CS.D.CFDGOLD.CFDGC.IP": {
+    "dealId": "DIAAAAWSLBL9WAX",
+    "direction": "SELL",
+    "openLevel": 5142.25,
+    "size": 1,
+    "tp1": 5140.75,
+    "tp2": 5139.25,
+    "tp3": 5130.25,
+    "sl": 5154.25,
+    "status": "PHASE_1",
+    "telegramMsgId": 8447,
+    "entryTimestamp": "2026-03-04T16:45:27.707Z"
   }
 }
