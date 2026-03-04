@@ -72,18 +72,14 @@ async function closePositionAPI(authData, dealId, epic, direction, size) {
     try {
         const response = await axios.post(`${process.env.IG_API_URL}/positions/otc`, {
             dealId: dealId,
-            epic: epic,
-            expiry: "-",
             direction: closeDirection,
             size: size,
-            orderType: "MARKET",
-            timeInForce: "EXECUTE_AND_ELIMINATE"
+            orderType: "MARKET"
         }, {
             headers: { 
                 'X-IG-API-KEY': process.env.IG_API_KEY, 
                 'CST': authData.cst, 
                 'X-SECURITY-TOKEN': authData.secToken, 
-                'X-HTTP-Method-Override': 'DELETE', 
                 '_method': 'DELETE', // Fallback
                 'Version': '1',
                 'Content-Type': 'application/json'

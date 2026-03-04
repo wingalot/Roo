@@ -57,6 +57,34 @@ async def main():
         
         reply_id = event.reply_to.reply_to_msg_id if getattr(event, 'reply_to', None) else None
         
+        # Ja tas ir atbilde uz kādu signālu un satur loģiku "move stoploss" / "sl hit" / "breakeven"
+        if reply_id and "move stoploss" in event.text.lower() or "sl" in event.text.lower() and "to" in event.text.lower():
+            # Atrast aktīvo treidu, kam sakrīt telegramMsgId un izmainīt failu
+            trades_file = '/home/roo/.openclaw/workspace/active_trades.json'
+            if os.path.exists(trades_file):
+                try:
+                    with open(trades_file, 'r') as tf:
+                        active = json.load(tf)
+                    
+                    # Izvelk jauno ciparu no teksta, ja tas satur "to [numurs]"
+                    import re
+                    match = re.search(r'(?i)to\s+([0-margin-9]+(?:\.[0-9]+)?)', event.text)
+                    if match:
+                        new_sl = float(match.group(1))
+                        # Update atbilstošo treidu
+                        updated = False
+                        for epic, trade in active.items():
+                            if trade.get('telegramMsgId') == reply_id:
+                                print(f"Aktualizēts SL priekš {epic} no {trade.get('sl')} uz {new_sl}")
+                                trade['sl'] = new_sl
+                                updated = True
+                        
+                        if updated:
+                            with open(trades_file, 'w') as tf:
+                                json.dump(active, tf, indent=4)
+                except Exception as e:
+                    print(f"Error parse/update SL no Reply: {e}")
+                    
         # Formatēt laiku atbilstoši GMT+2 (Rīga)
         if event.date:
             msg_time = event.date + timedelta(hours=2)
