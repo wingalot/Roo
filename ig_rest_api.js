@@ -13,6 +13,7 @@ async function createMarketOrder(authData, epic, direction, size) {
             orderType: "MARKET",
             timeInForce: "EXECUTE_AND_ELIMINATE",
             guaranteedStop: false,
+            currencyCode: "USD",
             // Nonemam default currency 
             currencyCode: "USD",
             forceOpen: true
@@ -44,7 +45,8 @@ async function createLimitOrder(authData, epic, direction, size, limitPrice) {
             level: limitPrice,
             type: "LIMIT",
             timeInForce: "GOOD_TILL_CANCELLED",
-            guaranteedStop: false
+            guaranteedStop: false,
+            currencyCode: "USD"
             // Nav currency auto force
         }, {
             headers: { 

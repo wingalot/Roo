@@ -1,1 +1,14 @@
-{}
+{
+  "CS.D.CFDGOLD.CFDGC.IP": {
+    "dealId": "DIAAAAWSFFESZBA",
+    "epic": "CS.D.CFDGOLD.CFDGC.IP",
+    "direction": "SELL",
+    "size": 1,
+    "entryPrice": 5186,
+    "tp1": 5183,
+    "tp2": 5120,
+    "sl": 5200.1,
+    "phase": 1,
+    "highestPnl": 0
+  }
+}
