@@ -9,6 +9,7 @@
     "tp2": 5120,
     "sl": 5200.1,
     "phase": 1,
-    "highestPnl": 0
+    "highestPnl": 0,
+    "telegramMsgId": 8444
   }
 }
