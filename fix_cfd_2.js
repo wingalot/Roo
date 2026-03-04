@@ -27,41 +27,26 @@ async function runRealSignal() {
         };
 
         const epic = 'CS.D.EURUSD.CFD.IP';
-        const direction = 'BUY';
-        
-        // CFD minimum order size for EURUSD looks like 10 (or 1 lot of standard). 
-        // We saw "lotSize": 10 in the instrument spec. 
-        // Let's try size 10 
-        const testSize = 1; // Wait, wait. 0.5 was MINIMUM_ORDER_SIZE_ERROR. 10 might work. Let's test 10 for EURUSD or EUR is EUR CFD. 
-        // Or 1 "Contract"? The info said: unit: CONTRACTS, and lotSize: 10. Let's try size: 1
-        
+        // EURUSD base currency is USD, CFD currency might be 'USD' or 'EUR'.
+        // "REJECT_SPREADBET_ORDER_ON_CFD_ACCOUNT" comes up when currency is USD but account currency doesn't allow standard CFDs in that format, 
+        // OR the API endpoint for V2 requires size, but if size makes it spreadbet, maybe we are missing something in standard headers?
+        // Let's use currencyCode = 'USD'
+        // Let's use size 0.1? CFD min size is 0.5. Let's use 1.0.
+
         console.log("🚀 Sūtu EURUSD BUY MARKET uz IG ...");
         
         const reqBody = {
             epic: epic,
             expiry: '-', // Let's try expiry '-' instead of 'DFB' for CFD? The info says expiry: "-"
             direction: 'BUY',
-            size: 1, // trying size 1 based on unit: CONTRACTS
+            size: 0.5,
             orderType: 'MARKET',
             guaranteedStop: false,
             forceOpen: true,
             currencyCode: 'USD'
         };
 
-        let res;
-        try{
-            res = await axios.post(`${process.env.IG_API_URL}/positions/otc`, reqBody, { headers: headers2 });
-        } catch(e) {
-            console.log("Kļūda:", e.response ? JSON.stringify(e.response.data) : e.message); 
-            // Try with EUR?
-            if(e.response && e.response.data.errorCode === 'REJECT_SPREADBET_ORDER_ON_CFD_ACCOUNT'){
-               // That usually happens if currencyCode is wrong.  Let's try 'EUR'.
-                reqBody.currencyCode = 'EUR';
-                res = await axios.post(`${process.env.IG_API_URL}/positions/otc`, reqBody, { headers: headers2 });
-            }
-        }
-        
-        if(!res) return;
+        const res = await axios.post(`${process.env.IG_API_URL}/positions/otc`, reqBody, { headers: headers2 });
         console.log("✅ Deal Reference:", res.data.dealReference);
         
         await new Promise(r => setTimeout(r, 2000));
@@ -79,7 +64,6 @@ async function runRealSignal() {
             const dealId = conf.dealId;
             const entry = parseFloat(conf.level);
             
-            // EURUSD scalings usually mean: 1.1636 -> IG: 11636 
             const pipVal = 10;
             const slLevel = entry - (15 * pipVal);
             const tp1Level = entry + (20 * pipVal);
@@ -93,7 +77,7 @@ async function runRealSignal() {
                 dealId: dealId,
                 direction: 'BUY',
                 openLevel: entry,   
-                size: 1,         
+                size: 0.5,         
                 tp1: tp1Level,
                 tp2: tp2Level,
                 tp3: tp3Level,
@@ -103,20 +87,6 @@ async function runRealSignal() {
             };
             fs.writeFileSync('active_trades.json', JSON.stringify(activeTrades, null, 2));
             console.log(`\n💾 Saglabāts Mērķis: \nEntry: ${entry}\nSL (-15p): ${slLevel}\nTP1: ${tp1Level}\nTP2: ${tp2Level}`);
-            
-            // Also save to mission control signals
-            let signals = [];
-            if (fs.existsSync('latest_signals.json')) {
-               signals = JSON.parse(fs.readFileSync('latest_signals.json', 'utf8'));
-            }
-            signals.unshift({
-               time: new Date().toLocaleTimeString('en-US', { timeZone: 'Europe/Riga', hour12: false }) + " GMT+2",
-               text: "EURUSD BUY NOW 1.16367\nSet SL 15 Pips",
-               isNew: true
-            });
-            if(signals.length > 10) signals = signals.slice(0, 10);
-            fs.writeFileSync('latest_signals.json', JSON.stringify(signals, null, 2));
-            console.log("Mission Control log atjaunināts!");
             
         } else {
              console.log("Noraidīts:", JSON.stringify(conf, null, 2));
