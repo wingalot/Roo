@@ -42,17 +42,18 @@ async function processSignal(signal) {
     // MARKET: "BUY XAUUSD 5152.9"
     let isLimit = false;
     let limitPrice = null;
-    let match = signal.text.match(/(BUY|SELL)\s+LIMIT\s+([A-Z]+)\s+([0-9.]+)/i);
-    if(match) {
-        isLimit = true;
-    } else {
-        match = signal.text.match(/(BUY|SELL)\s+([A-Z]+)\s+([0-9.]+)/i);
-    }
+    let direction = '';
+    let pair = '';
+    let price = 0;
+    
+    // Jaunais parseris - atbalsta '@' un formatējumus
+    let match = signal.text.match(/(BUY|SELL)[\s\*\*]*(LIMIT|STOP)?[\s\*\*]*([A-Z]+)[\s@\*\*]*([0-9.]+)/i);
     
     if (match && !signal.text.toLowerCase().includes('cancel') && !signal.text.toLowerCase().includes('hit')) {
-        const direction = match[1].toUpperCase();
-        let pair = match[2].toUpperCase();
-        const price = parseFloat(match[3]);
+        direction = match[1].toUpperCase();
+        if (match[2] && match[2].toUpperCase() === 'LIMIT') isLimit = true;
+        pair = match[3].toUpperCase();
+        price = parseFloat(match[4]);
 
         if(isLimit) {
             limitPrice = price;

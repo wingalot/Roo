@@ -44,6 +44,12 @@ async function syncLoop() {
         const posRes = await axios.get(`${process.env.IG_API_URL}/positions`, axiosConfig);
         const igPositions = posRes.data.positions || [];
         
+        let igWorkingOrders = [];
+        try {
+            const woRes = await axios.get(`${process.env.IG_API_URL}/workingorders`, axiosConfig);
+            igWorkingOrders = woRes.data.workingOrders || [];
+        } catch(e) { logMsg(`Brīdinājums: Nevarēja nolasīt limit orderus ${e.message}`); }
+        
         const activeTradesPath = 'active_trades.json';
         let activeTrades = {};
         if (fs.existsSync(activeTradesPath)) {
@@ -60,7 +66,11 @@ async function syncLoop() {
         }
         
         const localDealIds = new Set(Object.values(activeTrades).map(t => t.dealId));
-        const igDealIds = new Set(igPositions.map(p => p.position.dealId));
+        
+        let igDealIds = new Set();
+        igPositions.forEach(p => igDealIds.add(p.position.dealId));
+        igWorkingOrders.forEach(w => igDealIds.add(w.workingOrderData.dealId));
+        
         let modificationsMade = false;
 
         // Pārbaudam vai ir IG pozīcijas, kuru nav lokāli
