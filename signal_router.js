@@ -1,5 +1,6 @@
 const fs = require('fs');
 const axios = require('axios');
+const { writeSafeSync } = require('./fix_file_write');
 require('dotenv').config();
 
 const SIGNALS_FILE = 'latest_signals.json';
@@ -166,7 +167,7 @@ async function processSignal(signal) {
                     dealId: realDealId // Limit orderam IG uzreiz arī dod dealId (vai string order reference) tālākai operācijām!
                 });
                 
-                fs.writeFileSync('active_trades.json', JSON.stringify(activeTrades, null, 2));
+                writeSafeSync('active_trades.json', activeTrades);
                 console.log("Saglabāts `active_trades.json` sekmīgi!");
                 
             } catch (err) {
@@ -240,7 +241,7 @@ async function activateLimitLogic(targetMsgId) {
         // Piešķiram jaunu entry cenu lai ir ticams ierakts
         activeTrades.splice(tradeIndex, 1, activeTrades[tradeIndex]);
         
-        fs.writeFileSync('active_trades.json', JSON.stringify(activeTrades, null, 2));
+        writeSafeSync('active_trades.json', activeTrades);
         console.log(`✅ MARKET Orderis (${newDealId}) aktivizēts un ierakstīts DB! (Vecais limit dzēsts)`);
         } catch(err) {
         console.error("❌ IG API Kļūda transformējot LIMIT -> MARKET:", err.response ? JSON.stringify(err.response.data) : err.message);
@@ -272,7 +273,7 @@ async function cancelLimitLogic(targetMsgId) {
                 await axios.post(`${process.env.IG_API_URL}/workingorders/otc/${trade.dealId}`, {}, { headers });
                 console.log(`✅ Orderis ${trade.dealId} veiksmīgi atcelts!`);
                 delete activeTrades[key];
-                fs.writeFileSync('active_trades.json', JSON.stringify(activeTrades, null, 2));
+                writeSafeSync('active_trades.json', activeTrades);
             } catch (err) {
                 console.error("❌ IG API Kļūda dzēšot:", err.response ? JSON.stringify(err.response.data) : err.message);
             }
@@ -288,7 +289,7 @@ setInterval(() => {
                 const sig = signals[i];
                 if (sig.id && !processedIds.includes(sig.id)) {
                     processedIds.push(sig.id);
-                    fs.writeFileSync(PROCESSED_FILE, JSON.stringify(processedIds, null, 2));
+                    writeSafeSync(PROCESSED_FILE, processedIds);
                     processSignal(sig).catch(console.error);
                 }
             }
