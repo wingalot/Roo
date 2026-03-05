@@ -24,3 +24,7 @@ telegram_test.py
 ig_balance_test.js
 close_fake_position.js
 latest_signals.json
+processed_signals.json
+test_*.js
+fix_*.js
+close_all_one_by_one.js

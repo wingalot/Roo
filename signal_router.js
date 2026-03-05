@@ -57,13 +57,18 @@ async function processSignal(signal) {
     let price = 0;
     
     // Jaunais parseris - atbalsta '@' un formatējumus
-    let match = signal.text.match(/(BUY|SELL)[\s\*@]*(LIMIT|STOP)?[\s\*@]*([A-Z]+)[\s\*@A-Za-z:]*([0-9.]+)/i);;
-    
+        let match = signal.text.match(/(BUY|SELL)\s*([A-Za-z\@\s\*]*)(LIMIT|STOP)?[\s\*@]*([A-Z]{6})[\s\*@A-Za-z:-]*([0-9.]+)/i);
+
     if (match && !signal.text.toLowerCase().includes('cancel') && !signal.text.toLowerCase().includes('hit')) {
         direction = match[1].toUpperCase();
-        if (match[2] && match[2].toUpperCase() === 'LIMIT') isLimit = true;
-        pair = match[3].toUpperCase();
-        price = parseFloat(match[4]);
+        
+        // LIMIT pārbaude ir daudz robustāka šeit
+        if (signal.text.toLowerCase().includes('limit')) {
+             isLimit = true;
+        }
+
+        pair = match[4].toUpperCase();
+        price = parseFloat(match[5]);
 
         if(isLimit) {
             limitPrice = price;
@@ -74,11 +79,13 @@ async function processSignal(signal) {
         
         // Pārvēršam Felix pārus par IG Epic.
         let epic = '';
-        if (pair === 'XAUUSD') epic = 'CS.D.CFDGOLD.CFDGC.IP';
+        if (pair === 'XAUUSD' || pair === 'GOLD') epic = 'CS.D.CFDGOLD.CFDGC.IP';
         else if (pair === 'GBPUSD') epic = 'CS.D.GBPUSD.CFD.IP';
         else if (pair === 'GBPJPY') epic = 'CS.D.GBPJPY.CFD.IP';
         else if (pair === 'EURUSD') epic = 'CS.D.EURUSD.CFD.IP';
         else if (pair === 'EURAUD') epic = 'CS.D.EURAUD.CFD.IP';
+        else if (pair === 'EURJPY') epic = 'CS.D.EURJPY.CFD.IP';
+        else if (pair === 'BTCUSD') epic = 'CS.D.BITCOIN.CFD.IP';
         else console.log(`⚠️ Nezināms pāris: ${pair}`);
 
         if (epic) {
@@ -97,13 +104,17 @@ async function processSignal(signal) {
                 
                 const auth = await loginIG();
                 
-                // Mēs taisām size 1 kā baseline, vēlāk to var piesaistīt risk/SL. 
+                let size = 1;
+                if (pair === 'XAUUSD' || pair === 'GOLD') size = 2; // Zeltam lielāku size
+                else if (pair === 'BTCUSD') size = 0.5; // Kripto mazāku size
+
+                // Mēs taisām size kā baseline, vēlāk to var piesaistīt risk/SL. 
                 let res;
                 if(isLimit) {
-                     res = await createLimitOrder(auth, epic, direction, 1, limitPrice);
+                     res = await createLimitOrder(auth, epic, direction, !isNaN(size) ? size : 1, limitPrice);
                      console.log("LIMIT TIRDZNIECĪBA IESNIEGTA IG. DealRef:", res.dealReference);
                 } else {
-                     res = await createMarketOrder(auth, epic, direction, 1);
+                     res = await createMarketOrder(auth, epic, direction, !isNaN(size) ? size : 1);
                      console.log("MARKET TIRDZNIECĪBA IESNIEGTA IG. DealRef:", res.dealReference);
                 }
                 
@@ -144,7 +155,7 @@ async function processSignal(signal) {
                     telegramMsgId: signal.id,
                     epic: epic,
                     direction: direction,
-                    size: 1, // baseline
+                    size: !isNaN(size) ? size : 1, // baseline
                     entry: price,
                     sl: sl,
                     tp1: tp1,
@@ -159,7 +170,7 @@ async function processSignal(signal) {
                 console.log("Saglabāts `active_trades.json` sekmīgi!");
                 
             } catch (err) {
-                 console.error("Kļūda izpildot BUY/SELL MARKET: ", err.message);
+                 console.error("❌ IG API Kļūda:", err.response ? JSON.stringify(err.response.data) : err.message);
             }
         }
     }
@@ -200,7 +211,7 @@ async function activateLimitLogic(targetMsgId) {
             await axios.post(`${process.env.IG_API_URL}/workingorders/otc/${trade.dealId}`, {}, { headers });
             console.log(`✅ Gaidošais LIMIT orderis ${trade.dealId} sekmīgi atcelts platformā!`);
         } catch(e) { 
-            console.log(`Kļūda dzēšot veco LIMIT orderi: ${e.message}`);
+            console.error("❌ IG API Kļūda dzēšot veco LIMIT orderi:", e.response ? JSON.stringify(e.response.data) : e.message);
         }
 
         const { createMarketOrder } = require('./ig_rest_api');
@@ -231,8 +242,8 @@ async function activateLimitLogic(targetMsgId) {
         
         fs.writeFileSync('active_trades.json', JSON.stringify(activeTrades, null, 2));
         console.log(`✅ MARKET Orderis (${newDealId}) aktivizēts un ierakstīts DB! (Vecais limit dzēsts)`);
-    } catch(err) {
-        console.error("Kļūda transformējot LIMIT -> MARKET:", err.message);
+        } catch(err) {
+        console.error("❌ IG API Kļūda transformējot LIMIT -> MARKET:", err.response ? JSON.stringify(err.response.data) : err.message);
     }
 }
 
@@ -263,7 +274,7 @@ async function cancelLimitLogic(targetMsgId) {
                 delete activeTrades[key];
                 fs.writeFileSync('active_trades.json', JSON.stringify(activeTrades, null, 2));
             } catch (err) {
-                console.error("Kļūda dzēšot:", err.message);
+                console.error("❌ IG API Kļūda dzēšot:", err.response ? JSON.stringify(err.response.data) : err.message);
             }
         }
     }

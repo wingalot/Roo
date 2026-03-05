@@ -1,14 +1,1 @@
-[
-  {
-    "dealId": "DIAAAAWSUMGGAAV",
-    "epic": "CS.D.CFDGOLD.CFDGC.IP",
-    "direction": "SELL",
-    "sl": 0,
-    "tp1": 0,
-    "tp2": 0,
-    "tp3": 0,
-    "status": "PENDING",
-    "telegramMsgId": "RECONSTRUCTED",
-    "entryTimestamp": "2026-03-05T11:07:07.619Z"
-  }
-]
+[]

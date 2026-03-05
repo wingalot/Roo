@@ -4,6 +4,14 @@ const axios = require('axios');
 
 async function createMarketOrder(authData, epic, direction, size) {
     console.log(`🚀 Sūtu atvērt MARKET orderi: ${direction} ${size} lotes uz ${epic}...`);
+    
+    // Auto-detect currency based on EPIC
+    let currencyCode = "USD";
+    if (epic.includes("JPY")) currencyCode = "JPY";
+    else if (epic.includes("AUD")) currencyCode = "AUD";
+    else if (epic.includes("GBP") && !epic.includes("GBPUSD")) currencyCode = "GBP"; // EURGBP
+    else if (epic.includes("EUR") && !epic.includes("EURUSD") && !epic.includes("EURAUD") && !epic.includes("EURGBP")) currencyCode = "EUR"; 
+    
     try {
         const response = await axios.post(`${process.env.IG_API_URL}/positions/otc`, {
             epic: epic,
@@ -13,10 +21,8 @@ async function createMarketOrder(authData, epic, direction, size) {
             orderType: "MARKET",
             timeInForce: "EXECUTE_AND_ELIMINATE",
             guaranteedStop: false,
-            currencyCode: "USD",
-            // Nonemam default currency 
-            currencyCode: "USD",
-            forceOpen: true
+            forceOpen: true,
+            currencyCode: currencyCode
         }, {
             headers: { 
                 'X-IG-API-KEY': process.env.IG_API_KEY, 
@@ -36,6 +42,13 @@ async function createMarketOrder(authData, epic, direction, size) {
 
 async function createLimitOrder(authData, epic, direction, size, limitPrice) {
     console.log(`⏱️ Sūtu atvērt LIMIT orderi: ${direction} ${size} lotes uz ${epic} mērķējot uz ${limitPrice}...`);
+
+    let currencyCode = "USD";
+    if (epic.includes("JPY")) currencyCode = "JPY";
+    else if (epic.includes("AUD")) currencyCode = "AUD";
+    else if (epic.includes("GBP") && !epic.includes("GBPUSD")) currencyCode = "GBP"; 
+    else if (epic.includes("EUR") && !epic.includes("EURUSD") && !epic.includes("EURAUD") && !epic.includes("EURGBP")) currencyCode = "EUR"; 
+
     try {
         const response = await axios.post(`${process.env.IG_API_URL}/workingorders/otc`, {
             epic: epic,
@@ -46,8 +59,8 @@ async function createLimitOrder(authData, epic, direction, size, limitPrice) {
             type: "LIMIT",
             timeInForce: "GOOD_TILL_CANCELLED",
             guaranteedStop: false,
-            currencyCode: "USD"
-            // Nav currency auto force
+            forceOpen: true,
+            currencyCode: currencyCode
         }, {
             headers: { 
                 'X-IG-API-KEY': process.env.IG_API_KEY, 
