@@ -68,7 +68,7 @@ async def main():
                     
                     # Izvelk jauno ciparu no teksta, ja tas satur "to [numurs]"
                     import re
-                    match = re.search(r'(?i)to\s+([0-margin-9]+(?:\.[0-9]+)?)', event.text)
+                    match = re.search(r'(?i)to\s+([0-9]+(?:\.[0-9]+)?)', event.text)
                     if match:
                         new_sl = float(match.group(1))
                         # Update atbilstošo treidu

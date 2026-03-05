@@ -1,0 +1,1 @@
+- Pievienots: EURUSD CFD vienmēr prasa USD, savukārt GBPJPY CFD default currencyCode request ietvaros vienmēr atšķirsies (šajā gadījumā IG pieprasa "JPY", jo tas ir JPY/GBP un currencies list satur JPY ar faktoru). Tika izstrādāts dinamiskais `currencyCode` padoms. 
