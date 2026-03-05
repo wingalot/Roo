@@ -51,25 +51,34 @@ async function processSignal(signal) {
     // Šeit nolasām LIMIT vai MARKET.
     // LIMIT: "BUY LIMIT XAUUSD 5152.9"
     // MARKET: "BUY XAUUSD 5152.9"
+    // MARKET2: "EURUSD BUY NOW 1.1591"
     let isLimit = false;
     let limitPrice = null;
     let direction = '';
     let pair = '';
     let price = 0;
     
-    // Jaunais parseris - atbalsta '@' un formatējumus
-        let match = signal.text.match(/(BUY|SELL)\s*([A-Za-z\@\s\*]*)(LIMIT|STOP)?[\s\*@]*([A-Z]{6})[\s\*@A-Za-z:-]*([0-9.]+)/i);
+    // Jaunais parseris - atbalsta abus formātus un '@' un formatējumus
+    const regex1 = /(BUY|SELL)\s*([A-Za-z\@\s\*]*)(LIMIT|STOP)?[\s\*@]*([A-Z]{4,6})[\s\*@A-Za-z:-]*([0-9.]+)/i;
+    const regex2 = /([A-Z]{4,6})\s+(BUY|SELL)\s+([A-Za-z\@\s\*]*)(LIMIT|STOP)?[\s\*@]*([0-9.]+)/i;
+    let match = signal.text.match(regex1) || signal.text.match(regex2);
 
     if (match && !signal.text.toLowerCase().includes('cancel') && !signal.text.toLowerCase().includes('hit')) {
-        direction = match[1].toUpperCase();
         
+        if(match[0].match(/^[A-Z]{6}/i)) {
+             pair = match[1].toUpperCase();
+             direction = match[2].toUpperCase();
+             price = parseFloat(match[5]);
+        } else {
+             direction = match[1].toUpperCase();
+             pair = match[4].toUpperCase();
+             price = parseFloat(match[5]);
+        }
+
         // LIMIT pārbaude ir daudz robustāka šeit
         if (signal.text.toLowerCase().includes('limit')) {
              isLimit = true;
         }
-
-        pair = match[4].toUpperCase();
-        price = parseFloat(match[5]);
 
         if(isLimit) {
             limitPrice = price;
@@ -300,3 +309,4 @@ setInterval(() => {
 }, 2000);
 
 console.log("🔥 Signal Router palaists. Gaidu jaunus signālus...");
+module.exports = { processSignal };
