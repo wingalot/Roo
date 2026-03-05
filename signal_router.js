@@ -47,7 +47,7 @@ async function processSignal(signal) {
     let price = 0;
     
     // Jaunais parseris - atbalsta '@' un formatējumus
-    let match = signal.text.match(/(BUY|SELL)[\s\*\*]*(LIMIT|STOP)?[\s\*\*]*([A-Z]+)[\s@\*\*]*([0-9.]+)/i);
+    let match = signal.text.match(/(BUY|SELL)[\s\*@]*(LIMIT|STOP)?[\s\*@]*([A-Z]+)[\s\*@A-Za-z:]*([0-9.]+)/i);;
     
     if (match && !signal.text.toLowerCase().includes('cancel') && !signal.text.toLowerCase().includes('hit')) {
         direction = match[1].toUpperCase();

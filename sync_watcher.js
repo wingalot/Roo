@@ -106,18 +106,19 @@ async function syncLoop() {
         // Pārbaudam vai ir lokālas pozīcijas, kuru vairs nav IG (izdzēstas manuāli IG pusē vai izsistas)
         for (const [key, tradeObj] of Object.entries(activeTrades)) {
             if (!igDealIds.has(tradeObj.dealId)) {
-                logMsg(`🚨 KONFLIKTS: Lokāli ir pozīcija ${tradeObj.dealId} (${tradeObj.epic}), bet IG tā vairs neeksistē. Sūtu paziņojumu izdzēšanai...`);
-                
-                try {
-                    const tgMsg = `ℹ️ Info: Sinhronizācija.\n\nPozīcija ${tradeObj.epic} (DealID: ${tradeObj.dealId}) vairs neeksistē IG kontā. Dzēšu to no lokālās atmiņas.`;
-                    const { execSync } = require('child_process');
-                    execSync(`openclaw message send --target "telegram:395239117" --message "${tgMsg}"`);
-                } catch(tgErr) {
-                    logMsg(`Neizdevās nosūtīt OpenClaw paziņojumu: ${tgErr.message}`);
+                if (!ignoredIgPositions.has(tradeObj.dealId)) {
+                    logMsg(`🚨 KONFLIKTS: Lokāli ir pozīcija ${tradeObj.dealId} (${tradeObj.epic}), bet IG tā vairs neeksistē. Jautāju apstiprinājumu izdzēšanai...`);
+                    
+                    try {
+                        const { execSync } = require('child_process');
+                        execSync(`openclaw message send --target "telegram:395239117" --message="Uzmanību: Sinhronizācijas neatbilstība. Pozīcija ${tradeObj.epic} (DealID: ${tradeObj.dealId}) vairs neeksistē IG kontā, bet ir palikusi lokālajā atmiņā. Drīkstu šo izdzēst no lokālās datubāzes?"`);
+                        
+                        ignoredIgPositions.add(tradeObj.dealId);
+                        fs.writeFileSync(ignoredFile, JSON.stringify([...ignoredIgPositions]));
+                    } catch(tgErr) {
+                        logMsg(`Neizdevās nosūtīt OpenClaw paziņojumu: ${tgErr.message}`);
+                    }
                 }
-                
-                delete activeTrades[key];
-                modificationsMade = true;
             }
         }
         
