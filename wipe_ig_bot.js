@@ -1,6 +1,16 @@
 const axios = require('axios');
 require('dotenv').config();
-const { loginIG, closePositionAPI } = require('./ig_rest_api');
+
+async function loginIG() {
+    const res = await axios.post(`${process.env.IG_API_URL}/session`, {
+        identifier: process.env.IG_USERNAME,
+        password: process.env.IG_PASSWORD
+    }, { headers: { 'X-IG-API-KEY': process.env.IG_API_KEY, 'Version': '2' } });
+    return {
+        cst: res.headers['cst'],
+        secToken: res.headers['x-security-token']
+    };
+}
 
 async function go() {
     const auth = await loginIG();
@@ -16,19 +26,20 @@ async function go() {
     
     console.log(`Atrasti atvērti orderi: ${positions.length}`);
 
+    // Dzēšam visus atvērtos Market (OTC) deal
     for (const p of positions) {
-        console.log(`Dzēšu: ${p.position.dealId}`);
+        console.log(`Dzēšu: ${p.position.dealId}  ${p.market.epic}  Size: ${p.position.dealSize} Type: ${p.position.direction}`);
         const closeDirection = p.position.direction === "BUY" ? "SELL" : "BUY";
         try {
             const resp = await axios.post(`${process.env.IG_API_URL}/positions/otc`, {
                 dealId: p.position.dealId,
                 direction: closeDirection,
-                size: parseFloat(p.position.dealSize),
+                size: p.position.dealSize.toString(),
                 orderType: "MARKET"
             }, {
                 headers: {
                     ...headers,
-                    'Version': '1', // Svarīgi - V1 DELETE prasa Method-Override
+                    'Version': '1', 
                     '_method': 'DELETE',
                     'X-HTTP-Method-Override': 'DELETE'
                 }

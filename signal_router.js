@@ -58,22 +58,36 @@ async function processSignal(signal) {
     let pair = '';
     let price = 0;
     
-    // Jaunais parseris - atbalsta abus formātus un '@' un formatējumus
-    const regex1 = /(BUY|SELL)\s*([A-Za-z\@\s\*]*)(LIMIT|STOP)?[\s\*@]*([A-Z]{4,6})[\s\*@A-Za-z:-]*([0-9.]+)/i;
-    const regex2 = /([A-Z]{4,6})\s+(BUY|SELL)\s+([A-Za-z\@\s\*]*)(LIMIT|STOP)?[\s\*@]*([0-9.]+)/i;
-    let match = signal.text.match(regex1) || signal.text.match(regex2);
+    // Jaunais parseris - drošs pret kļūdainām ekstrakcijām
+    const regexDirect = /(BUY|SELL)\s+(?:LIMIT\s+|STOP\s+)?([A-Z]{6})(?:\s*@\s*|\s+)([\d\.]+)/i;
+    const regexReversed = /([A-Z]{6})\s+(?:BUY|SELL)\s+(?:LIMIT\s+|STOP\s+)?(?:NOW|@|\s)?\s*([\d\.]+)/i;
+    const regexWithStars = /([A-Z]{6})\s*⭐️?[^]*(BUY|SELL).*(?:NOW|@|\s):?\s*([\d\.]+)/i;
 
-    if (match && !signal.text.toLowerCase().includes('cancel') && !signal.text.toLowerCase().includes('hit')) {
-        
-        if(match[0].match(/^[A-Z]{6}/i)) {
+    let match = signal.text.match(regexDirect);
+    
+    if (signal.text.toLowerCase().includes('cancel') || signal.text.toLowerCase().includes('hit')) return;
+    
+    if (match) {
+        direction = match[1].toUpperCase();
+        pair = match[2].toUpperCase();
+        price = parseFloat(match[3]);
+    } else {
+        match = signal.text.match(regexReversed);
+        if (match) {
+             direction = signal.text.toLowerCase().includes('buy') ? 'BUY' : 'SELL';
              pair = match[1].toUpperCase();
-             direction = match[2].toUpperCase();
-             price = parseFloat(match[5]);
+             price = parseFloat(match[2]);
         } else {
-             direction = match[1].toUpperCase();
-             pair = match[4].toUpperCase();
-             price = parseFloat(match[5]);
+             match = signal.text.match(regexWithStars);
+             if(match) {
+                 direction = match[2].toUpperCase();
+                 pair = match[1].toUpperCase();
+                 price = parseFloat(match[3]);
+             }
         }
+    }
+
+    if (match) {
 
         // LIMIT pārbaude ir daudz robustāka šeit
         if (signal.text.toLowerCase().includes('limit')) {
@@ -91,12 +105,7 @@ async function processSignal(signal) {
         let epic = '';
         if (pair === 'XAUUSD' || pair === 'GOLD') epic = 'CS.D.CFDGOLD.CFDGC.IP';
         else if (pair === 'GBPUSD') epic = 'CS.D.GBPUSD.CFD.IP';
-        else if (pair === 'GBPJPY') epic = 'CS.D.GBPJPY.CFD.IP';
-        else if (pair === 'EURUSD') epic = 'CS.D.EURUSD.CFD.IP';
-        else if (pair === 'EURAUD') epic = 'CS.D.EURAUD.CFD.IP';
-        else if (pair === 'EURJPY') epic = 'CS.D.EURJPY.CFD.IP';
-        else if (pair === 'BTCUSD') epic = 'CS.D.BITCOIN.CFD.IP';
-        else console.log(`⚠️ Nezināms pāris: ${pair}`);
+        else if (pair === 'BTCUSD') epic = 'CS.D.BITCOIN.CFD.IP'; else epic = `CS.D.${pair}.CFD.IP`; // Dinamiskā Epic piešķiršana testam
 
         if (epic) {
             try {
