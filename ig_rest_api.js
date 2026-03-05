@@ -84,11 +84,13 @@ async function closePositionAPI(authData, dealId, epic, originalDirection, origi
     const closeDirection = originalDirection === "BUY" ? "SELL" : "BUY";
     // Automātiska pārliecināšanās, ka mēs pasniedzam pareizo formātu decimāldaļās (piem. 0.1) String vai float
     const exactSize = typeof originalSize === "string" ? parseFloat(originalSize) : originalSize;
+    // Papildus: ja "size" netiek izvilkts no originalSize kā objekts
+    const closeSize = originalSize.size ? originalSize.size : exactSize;
     try {
         const response = await axios.post(`${process.env.IG_API_URL}/positions/otc`, {
             dealId: dealId,
             direction: closeDirection,
-            size: exactSize,
+            size: parseFloat(exactSize),
             orderType: "MARKET"
         }, {
             headers: { 
