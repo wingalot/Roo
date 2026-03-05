@@ -276,6 +276,8 @@ setInterval(() => {
             for (let i = signals.length - 1; i >= 0; i--) {
                 const sig = signals[i];
                 if (sig.id && !processedIds.includes(sig.id)) {
+                    processedIds.push(sig.id);
+                    fs.writeFileSync(PROCESSED_FILE, JSON.stringify(processedIds, null, 2));
                     processSignal(sig).catch(console.error);
                 }
             }
