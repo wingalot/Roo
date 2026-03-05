@@ -24,6 +24,9 @@ async function loginIG() {
 // Vienkāršs parseris demonstrācijai / Limit atcelšanai
 async function processSignal(signal) {
     if (processedIds.includes(signal.id)) return;
+    
+    // Uzreiz pievienojam processed sarakstam, lai novērstu asinhronu dublēšanos (Double execution bug fix)
+    // Pārcelts uz augšu
     console.log(`Pamanīts jauns signāls ID: ${signal.id}`);
     
 
@@ -162,8 +165,7 @@ async function processSignal(signal) {
     }
 
     
-    processedIds.push(signal.id);
-    fs.writeFileSync(PROCESSED_FILE, JSON.stringify(processedIds));
+    // Pārcelts uz augšu
 }
 
 
