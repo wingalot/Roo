@@ -1,21 +1,17 @@
-const axios = require('axios');
 const fs = require('fs');
+let code = fs.readFileSync('ig_rest_api.js', 'utf8');
 
-async function safeApiCall(fn, retries = 3) {
-    for (let i = 0; i < retries; i++) {
-        try {
-            return await fn();
-        } catch (error) {
-            const status = error.response ? error.response.status : null;
-            if (status === 429 || status >= 500) {
-                console.log(`Ig Api Kļūda ${status}, retry... (${i + 1}/${retries})`);
-                await new Promise(r => setTimeout(r, 2000 * (i + 1))); // Exponentialish backoff
-            } else {
-                throw error;
-            }
-        }
-    }
-    throw new Error('IG API zvanam beidzies retry limits!');
-}
+const regexToReplace = /const response = await axios\.post\(\`\$\{process\.env\.IG_API_URL\}\/positions\/otc\`, \{\s*dealId: dealId,\s*direction: closeDirection,\s*size: closeSize,\s*orderType: "MARKET"\s*\}, \{/gm;
+const regexToReplace2 = /const response = await axios\.post\(\`\$\{process\.env\.IG_API_URL\}\/positions\/otc\`, \{\s*dealId: dealId,\s*direction: closeDirection,\s*size: exactSize\.toString\(\),\s*orderType: "MARKET"\s*\}, \{/gm;
 
-module.exports = { safeApiCall };
+const newCode = `const response = await axios.post(\`\${process.env.IG_API_URL}/positions/otc\`, {
+            dealId: dealId,
+            direction: closeDirection,
+            size: closeSize.toString(),
+            orderType: "MARKET"
+        }, {`;
+
+code = code.replace(regexToReplace, newCode);
+code = code.replace(regexToReplace2, newCode);
+
+fs.writeFileSync('ig_rest_api.js', code);

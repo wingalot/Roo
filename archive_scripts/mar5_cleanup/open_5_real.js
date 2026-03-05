@@ -5,11 +5,11 @@ const { createMarketOrder } = require('./ig_rest_api');
 
 // Konfigurācija 5 pāriem
 const assets = [
-    { epic: 'CS.D.EURUSD.CFD.IP', dir: 'BUY', size: 0.5, type: 'forex' },
-    { epic: 'CS.D.GBPUSD.CFD.IP', dir: 'SELL', size: 0.5, type: 'forex' },
-    { epic: 'CS.D.CFDGOLD.CFDGC.IP', dir: 'BUY', size: 0.5, type: 'gold' },
-    { epic: 'CS.D.EURGBP.CFD.IP', dir: 'SELL', size: 0.5, type: 'forex' },
-    { epic: 'IX.D.DOW.DAILY.IP', dir: 'BUY', size: 1.0, type: 'index' }
+    { epic: 'CS.D.EURUSD.CFD.IP', dir: 'BUY', size: 1, type: 'forex' },
+    { epic: 'CS.D.GBPUSD.CFD.IP', dir: 'SELL', size: 1, type: 'forex' },
+    { epic: 'CS.D.CFDGOLD.CFDGC.IP', dir: 'BUY', size: 1, type: 'gold' },
+    { epic: 'CS.D.EURGBP.CFD.IP', dir: 'SELL', size: 1, type: 'forex' },
+    { epic: 'IX.D.DOW.DAILY.IP', dir: 'BUY', size: 1, type: 'index' }
 ];
 
 async function run() {

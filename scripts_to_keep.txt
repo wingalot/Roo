@@ -1,0 +1,2 @@
+wipe_ig_bot.js
+sim_trigger.js
